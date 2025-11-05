@@ -14,18 +14,24 @@ app.use(express.json()); // Allows the server to accept and parse JSON data
 // 3. (We will add Mongoose connection here)
 const uri = process.env.ATLAS_URI;
 mongoose.connect(uri);
-
 const connection = mongoose.connection;
 connection.once('open', () => {
   console.log('MongoDB database connection established successfully!');
 });
 
-// 4. (We will add API routes here)
+// --- IMPORT & USE ROUTES ---
+const userRoutes = require('./routes/userRoutes');
+app.use('/api/users', userRoutes);
+
+const petRoutes = require('./routes/petRoutes');
+app.use('/api/pets', petRoutes);
+
+// --- Test Route ---
 app.get('/', (req, res) => {
   res.json({ message: 'Welcome to ThePurryLife API!' });
 });
 
-// 5. Start the Server
+// Start the Server
 app.listen(PORT, () => {
   console.log(`Server is running on port: ${PORT}`);
 });
