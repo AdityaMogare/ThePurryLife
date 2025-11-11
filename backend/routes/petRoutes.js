@@ -1,6 +1,8 @@
 const router = require('express').Router();
 const Pet = require('../models/Pet');
 const User = require('../models/User'); // We need the User model to update the owner's pet list
+const authMiddleware = require('../middleware/authMiddleware');
+router.use(authMiddleware);
 
 /**
  * @route   GET /api/pets
@@ -10,23 +12,18 @@ const User = require('../models/User'); // We need the User model to update the 
  */
 router.get('/', async (req, res) => {
   try {
-    const { userId } = req.query; // Get the user's ID from the query string
+    // 3. GET THE USER'S FIREBASE UID FROM THE REQUEST
+    // The middleware attached it for us as 'req.user'
+    const firebaseUid = req.user.uid;
 
-    if (!userId) {
-      return res.status(400).json({ message: 'User ID is required' });
-    }
-
-    // 1. Find the user to confirm they exist
-    const user = await User.findById(userId);
+    // 4. Find our internal user in MongoDB
+    const user = await User.findOne({ firebaseUid: firebaseUid });
     if (!user) {
-      return res.status(404).json({ message: 'User not found' });
+      return res.status(404).json({ message: 'User profile not found in database' });
     }
 
-    // 2. This is the CRUCIAL LOGIC:
-    // Find all pets where the 'owner' field is NOT ($ne) the user's ID.
+    // 5. Use the user's MONGODB ID for the query
     const petsForSwiping = await Pet.find({ owner: { $ne: user._id } });
-    
-    // We can add more filtering here later (e.g., by species, location).
 
     res.status(200).json(petsForSwiping);
 
@@ -45,40 +42,33 @@ router.get('/', async (req, res) => {
  */
 router.post('/', async (req, res) => {
   try {
-    // 1. Get all pet data from the request body
-    // 'owner' will be the User's _id from our database
-    const { owner, name, species, age, gender, bio } = req.body;
+    // 6. We no longer need the frontend to send 'owner' in the body.
+    // We can get it securely from the token.
+    const firebaseUid = req.user.uid; 
+    const petOwner = await User.findOne({ firebaseUid: firebaseUid });
 
-    // 2. Simple validation
-    if (!owner || !name || !species || !age || !gender) {
-      return res.status(400).json({ message: 'Missing required pet fields' });
-    }
-
-    // 3. Find the owner to make sure they exist
-    const petOwner = await User.findById(owner);
     if (!petOwner) {
       return res.status(404).json({ message: 'Owner (User) not found' });
     }
 
-    // 4. Create the new pet instance
+    const { name, species, age, gender, bio } = req.body;
+    if (!name || !species || !age || !gender) {
+      return res.status(400).json({ message: 'Missing required pet fields' });
+    }
+    
     const newPet = new Pet({
-      owner: owner,
-      name: name,
-      species: species,
-      age: age,
-      gender: gender,
-      bio: bio,
-      // You can add other fields like breed, photos here
+      owner: petOwner._id, // Use the secure ID
+      name,
+      species,
+      age,
+      gender,
+      bio,
     });
 
-    // 5. Save the new pet to the database
     const savedPet = await newPet.save();
-
-    // 6. IMPORTANT: Add this new pet's ID to the owner's 'pets' array
     petOwner.pets.push(savedPet._id);
-    await petOwner.save(); // Save the updated user
+    await petOwner.save();
 
-    // 7. Respond with the new pet's data
     res.status(201).json(savedPet);
 
   } catch (err) {

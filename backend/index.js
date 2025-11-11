@@ -3,6 +3,16 @@ const cors = require('cors');
 const mongoose = require('mongoose');
 require('dotenv').config(); // Loads .env file contents into process.env
 
+// --- 1. IMPORT FIREBASE ADMIN ---
+const admin = require('firebase-admin');
+const serviceAccount = require('./serviceAccountKey.json');
+
+// --- 2. INITIALIZE FIREBASE ADMIN ---
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount)
+});
+// --- END OF FIREBASE SETUP ---
+
 // 1. Initialize Express App
 const app = express();
 const PORT = process.env.PORT || 5001; // Use 5001 as a common backend port
