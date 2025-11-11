@@ -3,6 +3,42 @@ const Pet = require('../models/Pet');
 const User = require('../models/User'); // We need the User model to update the owner's pet list
 
 /**
+ * @route   GET /api/pets
+ * @desc    Get all pets for the swiping deck, excluding the user's own.
+ * @access  Public (for now)
+ * @query   ?userId=<the_user_s_database_id>
+ */
+router.get('/', async (req, res) => {
+  try {
+    const { userId } = req.query; // Get the user's ID from the query string
+
+    if (!userId) {
+      return res.status(400).json({ message: 'User ID is required' });
+    }
+
+    // 1. Find the user to confirm they exist
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // 2. This is the CRUCIAL LOGIC:
+    // Find all pets where the 'owner' field is NOT ($ne) the user's ID.
+    const petsForSwiping = await Pet.find({ owner: { $ne: user._id } });
+    
+    // We can add more filtering here later (e.g., by species, location).
+
+    res.status(200).json(petsForSwiping);
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error fetching pets', error: err.message });
+  }
+});
+
+
+
+/**
  * @route   POST /api/pets
  * @desc    Create a new pet profile
  * @access  Public (for now, will be secured later)
