@@ -10,11 +10,9 @@ import NotFound from "@/pages/NotFound";
 import Login from "@/pages/Login"; // Import the Login page we created
 import Register from "@/pages/Register";
 import { AuthProvider } from "@/context/AuthContext"; // Import the AuthProvider
+import Dashboard from '@/pages/Dashboard';
 
 import ProtectedRoute from '@/components/ProtectedRoute';
-const Dashboard = () => (
-  <h1 className="text-3xl">Welcome to your PurryLife Dashboard!</h1>
-);
 
 const queryClient = new QueryClient();
 
